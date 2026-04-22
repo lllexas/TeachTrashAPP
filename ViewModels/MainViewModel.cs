@@ -16,21 +16,26 @@ namespace TrashAPP.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
-    private readonly IInferenceService _inferenceService;
+    private readonly HttpInferenceService _httpService;
+    private readonly BackendLauncher _backendLauncher;
     private CancellationTokenSource? _cts;
 
-    // ========== 模型路径（自动加载，只读显示）==========
+    // ========== 后端连接 ==========
     [ObservableProperty]
-    private string _detectModelPath = "加载中...";
+    [NotifyPropertyChangedFor(nameof(CanStartInference))]
+    private string _backendUrl = "http://127.0.0.1:8000";
 
     [ObservableProperty]
-    private string _classifyModelPath = "加载中...";
+    private bool _backendConnected;
 
     [ObservableProperty]
-    private bool _modelsReady;
+    private string? _backendStatusMessage;
 
     [ObservableProperty]
-    private string? _modelStatusMessage;
+    [NotifyPropertyChangedFor(nameof(ShowStartBackendButton))]
+    private bool _isStartingBackend;
+
+    public bool ShowStartBackendButton => !BackendConnected && !IsStartingBackend;
 
     // ========== 输入配置 ==========
     [ObservableProperty]
@@ -64,7 +69,7 @@ public partial class MainViewModel : ObservableObject
     private bool _isRunning;
 
     [ObservableProperty]
-    private string _statusMessage = "就绪";
+    private string _statusMessage = "就绪 - 正在检测后端...";
 
     [ObservableProperty]
     private double _progressValue;
@@ -101,7 +106,7 @@ public partial class MainViewModel : ObservableObject
 
     public bool CanStartInference =>
         !IsRunning
-        && ModelsReady
+        && BackendConnected
         && !string.IsNullOrWhiteSpace(SourcePath)
         && (OutputMode == OutputMode.PreviewOnly || !string.IsNullOrWhiteSpace(OutputDir));
 
@@ -112,37 +117,81 @@ public partial class MainViewModel : ObservableObject
     // ========== 构造函数 ==========
     public MainViewModel()
     {
-        _inferenceService = new PythonProcessInferenceService();
-        LoadModels();
+        _httpService = new HttpInferenceService(BackendUrl);
+        _backendLauncher = new BackendLauncher();
+        _ = InitializeAsync();
     }
 
-    public MainViewModel(IInferenceService inferenceService)
+    private async Task InitializeAsync()
     {
-        _inferenceService = inferenceService;
-        LoadModels();
+        // 启动时自动检测后端
+        await TestBackendConnection();
     }
 
-    // ========== 模型自动加载 ==========
-    private void LoadModels()
+    // ========== 一键启动后端 ==========
+    [RelayCommand]
+    private async Task StartBackend()
     {
-        var (ready, detect, classify, error) = ModelAutoLoader.CheckModels();
-        ModelsReady = ready;
-        DetectModelPath = detect ?? "未找到";
-        ClassifyModelPath = classify ?? "未找到";
-        ModelStatusMessage = ready
-            ? "模型已自动加载"
-            : error ?? "模型加载失败";
+        if (IsStartingBackend)
+            return;
 
-        if (!ready)
+        IsStartingBackend = true;
+        StatusMessage = "正在启动后端服务...";
+
+        try
         {
-            StatusMessage = $"模型未就绪: {error}";
+            var success = await _backendLauncher.StartAsync(
+                onProgress: msg => StatusMessage = msg,
+                cancellationToken: CancellationToken.None
+            );
+
+            if (success)
+            {
+                await TestBackendConnection();
+            }
+            else
+            {
+                StatusMessage = "后端启动失败，请检查 Python 环境和依赖";
+                MessageBox.Show(
+                    "后端启动失败。请确认:\n1. Python 已安装\n2. 依赖已安装 (pip install -r requirements.txt)\n3. 模型文件已放入 models/ 目录",
+                    "启动失败",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"启动异常: {ex.Message}";
+        }
+        finally
+        {
+            IsStartingBackend = false;
         }
     }
 
+    // ========== 后端连接测试 ==========
     [RelayCommand]
-    private void RefreshModels()
+    private async Task TestBackendConnection()
     {
-        LoadModels();
+        StatusMessage = $"正在连接 {BackendUrl}...";
+        _httpService.UpdateBaseUrl(BackendUrl);
+
+        try
+        {
+            var isHealthy = await _httpService.HealthCheckAsync();
+            BackendConnected = isHealthy;
+            BackendStatusMessage = isHealthy ? "后端连接正常" : "后端无响应";
+            StatusMessage = isHealthy
+                ? $"后端连接成功: {BackendUrl}"
+                : $"后端未运行: {BackendUrl}";
+        }
+        catch (Exception ex)
+        {
+            BackendConnected = false;
+            BackendStatusMessage = "连接异常";
+            StatusMessage = $"连接异常: {ex.Message}";
+        }
     }
 
     // ========== 输入选择 ==========
@@ -164,7 +213,6 @@ public partial class MainViewModel : ObservableObject
                 SelectFolder("选择包含视频的文件夹");
                 break;
             case InputMode.CameraStream:
-                // TODO: 摄像头
                 SourcePath = "摄像头输入（TODO）";
                 break;
         }
@@ -253,14 +301,7 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            var parameters = new InferenceParameters
-            {
-                DetectModelPath = DetectModelPath,
-                ClassifyModelPath = ClassifyModelPath,
-                DetectConfidence = 0.25f,
-                MaxBoxAreaRatio = 0.30f,
-                BigBoxMinClassConfidence = 0.55f
-            };
+            var parameters = new InferenceParameters();
 
             if (IsFolderInput)
             {
@@ -273,7 +314,7 @@ public partial class MainViewModel : ObservableObject
                         break;
 
                     StatusMessage = $"正在识别: {Path.GetFileName(imgPath)}";
-                    var result = await _inferenceService.InferSingleAsync(imgPath, parameters, _cts.Token);
+                    var result = await _httpService.InferSingleAsync(imgPath, parameters, _cts.Token);
 
                     ProcessResult(result);
                     ProcessedImages++;
@@ -285,7 +326,7 @@ public partial class MainViewModel : ObservableObject
             else
             {
                 TotalImages = 1;
-                var result = await _inferenceService.InferSingleAsync(SourcePath, parameters, _cts.Token);
+                var result = await _httpService.InferSingleAsync(SourcePath, parameters, _cts.Token);
                 ProcessResult(result);
                 ProcessedImages = 1;
                 ProgressValue = 100;
@@ -329,8 +370,25 @@ public partial class MainViewModel : ObservableObject
         foreach (var det in result.Detections)
             CurrentDetections.Add(det);
 
-        if (!string.IsNullOrEmpty(result.OutputImagePath) && File.Exists(result.OutputImagePath))
-            LoadResultImage(result.OutputImagePath);
+        // 尝试从后端返回的 save_path 加载结果图
+        if (!string.IsNullOrEmpty(result.OutputImagePath))
+        {
+            try
+            {
+                if (File.Exists(result.OutputImagePath))
+                {
+                    LoadResultImage(result.OutputImagePath);
+                    return;
+                }
+            }
+            catch { }
+        }
+
+        // 如果无法加载结果图，显示原图
+        if (!string.IsNullOrEmpty(result.ImagePath) && File.Exists(result.ImagePath))
+        {
+            LoadResultImage(result.ImagePath);
+        }
     }
 
     private void ProcessResult(ImageInferenceResult result)

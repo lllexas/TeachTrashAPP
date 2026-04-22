@@ -53,45 +53,47 @@
                     <TextBlock Text="垃圾识别系统" FontSize="22" FontWeight="Bold" Margin="0,0,0,4" Foreground="#FF333333"/>
                     <TextBlock Text="基于 YOLO + ResNet18" FontSize="11" Foreground="#FF999999" Margin="0,0,0,16"/>
 
-                    <!-- 模型状态 -->
+                    <!-- 后端连接 -->
                     <Border Background="#FFF0F7FF" BorderBrush="#FFBBDEFB" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="模型状态" FontWeight="Bold" FontSize="12" Foreground="#FF1976D2" Margin="0,0,0,8"/>
+                            <TextBlock Text="后端连接" FontWeight="Bold" FontSize="12" Foreground="#FF1976D2" Margin="0,0,0,8"/>
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="检测模型:" FontSize="11" Foreground="#FF666666" Margin="0,0,8,0"/>
-                                <TextBlock Grid.Column="1" Text="{Binding DetectModelPath}" FontSize="11" Foreground="#FF333333" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Grid.Column="0" Text="地址:" FontSize="11" Foreground="#FF666666" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding BackendUrl}" FontSize="11" Padding="4,2"/>
                             </Grid>
-                            <Grid Margin="0,2">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="分类模型:" FontSize="11" Foreground="#FF666666" Margin="0,0,8,0"/>
-                                <TextBlock Grid.Column="1" Text="{Binding ClassifyModelPath}" FontSize="11" Foreground="#FF333333" TextTrimming="CharacterEllipsis"/>
-                            </Grid>
-                            <TextBlock Text="{Binding ModelStatusMessage}" FontSize="10" Margin="0,4,0,0">
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <Button Content="测试连接" Command="{Binding TestBackendConnectionCommand}" FontSize="11" Padding="8,4">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                            <Setter Property="Background" Value="#FF90CAF9"/>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="启动后端" Command="{Binding StartBackendCommand}" FontSize="11" Padding="8,4" Margin="4,0,0,0">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                            <Setter Property="Background" Value="#FF4CAF50"/>
+                                            <Setter Property="Visibility" Value="{Binding ShowStartBackendButton, Converter={StaticResource BoolToVisibleConverter}}"/>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Text="{Binding BackendStatusMessage}" FontSize="10" Margin="0,4,0,0">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="#FF4CAF50"/>
+                                        <Setter Property="Foreground" Value="#FFF44336"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding ModelsReady}" Value="False">
-                                                <Setter Property="Foreground" Value="#FFF44336"/>
+                                            <DataTrigger Binding="{Binding BackendConnected}" Value="True">
+                                                <Setter Property="Foreground" Value="#FF4CAF50"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </TextBlock.Style>
                             </TextBlock>
-                            <Button Content="刷新" Command="{Binding RefreshModelsCommand}" FontSize="10" Padding="8,2" Margin="0,4,0,0" HorizontalAlignment="Left">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                        <Setter Property="Background" Value="#FF90CAF9"/>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
                         </StackPanel>
                     </Border>
 

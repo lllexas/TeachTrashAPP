@@ -1,13 +1,13 @@
 from pathlib import Path
 import shutil
-from typing import Optional
+import os
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from handlers.detect_and_classify_images import run_image
 from handlers.detect_and_classify_video import run_video
-from handlers.a import run_camera
+from handlers.camera_handler import run_camera
 
 
 # =========================================================
@@ -48,6 +48,9 @@ app.add_middleware(
 # =========================================================
 # 3. 工具函数
 # =========================================================
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+
+
 def save_upload_file(upload_file: UploadFile, save_dir: Path) -> Path:
     if not upload_file.filename:
         raise HTTPException(status_code=400, detail="Empty filename")
@@ -57,6 +60,11 @@ def save_upload_file(upload_file: UploadFile, save_dir: Path) -> Path:
 
     with file_path.open("wb") as buffer:
         shutil.copyfileobj(upload_file.file, buffer)
+
+    # 检查文件大小
+    if file_path.stat().st_size > MAX_FILE_SIZE:
+        file_path.unlink()
+        raise HTTPException(status_code=413, detail="File too large (max 50MB)")
 
     return file_path
 
@@ -73,6 +81,14 @@ def ensure_video_file(filename: str):
     suffix = Path(filename).suffix.lower()
     if suffix not in allowed:
         raise HTTPException(status_code=415, detail="Unsupported video file type")
+
+
+def cleanup_temp(file_path: Path):
+    try:
+        if file_path.exists():
+            file_path.unlink()
+    except Exception:
+        pass
 
 
 # =========================================================
@@ -105,6 +121,7 @@ async def predict_image(file: UploadFile = File(...)):
 
     ensure_image_file(file.filename)
 
+    temp_path = None
     try:
         temp_path = save_upload_file(file, TEMP_DIR)
         result = run_image(
@@ -115,16 +132,22 @@ async def predict_image(file: UploadFile = File(...)):
         if result is None:
             raise HTTPException(status_code=500, detail="Image processing failed")
 
+        # 返回标准 API 格式
         return {
             "success": True,
-            "mode": "image",
             "filename": file.filename,
-            "result": result
+            "inference_time_ms": result.get("inference_time_ms", 0),
+            "detections": result.get("detections", []),
+            "detection_count": result.get("detection_count", 0),
+            "save_path": result.get("save_path", ""),
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image inference failed: {e}")
+    finally:
+        if temp_path:
+            cleanup_temp(temp_path)
 
 
 # =========================================================
@@ -137,6 +160,7 @@ async def predict_video(file: UploadFile = File(...)):
 
     ensure_video_file(file.filename)
 
+    temp_path = None
     try:
         temp_path = save_upload_file(file, TEMP_DIR)
         result = run_video(
@@ -145,15 +169,19 @@ async def predict_video(file: UploadFile = File(...)):
         )
 
         return {
-            "success": True,
-            "mode": "video",
+            "success": result.get("success", True),
             "filename": file.filename,
-            "result": result
+            "output_path": result.get("output_path", ""),
+            "total_frames": result.get("total_frames", 0),
+            "global_counter": result.get("global_counter", {}),
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Video inference failed: {e}")
+    finally:
+        if temp_path:
+            cleanup_temp(temp_path)
 
 
 # =========================================================
@@ -164,7 +192,7 @@ async def predict_camera(
     camera_id: int = Form(0),
     enable_record: bool = Form(True),
     show_window: bool = Form(False),
-    max_frames: Optional[int] = Form(200)
+    max_frames: int = Form(200)
 ):
     try:
         output_video_path = None
@@ -180,9 +208,10 @@ async def predict_camera(
         )
 
         return {
-            "success": True,
-            "mode": "camera",
-            "result": result
+            "success": result.get("success", True),
+            "camera_id": camera_id,
+            "frames_processed": result.get("frames_processed", 0),
+            "output_video_path": result.get("output_video_path"),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Camera inference failed: {e}")
