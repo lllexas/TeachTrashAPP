@@ -1,0 +1,2 @@
+@echo off
+powershell -NoLogo -Command "$env:ANTHROPIC_BASE_URL='https://api.kimi.com/coding/'; $env:ANTHROPIC_AUTH_TOKEN='sk-kimi-ugTk5t73No0U1Z8qo0IaH9QvxXrwTwbuPMYmtrzRuLffRzdHTyQubShMRdqB9Apu'; $env:ANTHROPIC_MODEL='kimi-for-coding'; $env:ANTHROPIC_DEFAULT_HAIKU_MODEL='K2.6-code-preview'; $env:API_TIMEOUT_MS='600000'; $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC='1'; $env:ENABLE_TOOL_SEARCH='false'; $env:ANTHROPIC_API_KEY=$null; Set-Location '%~dp0'; claude"
