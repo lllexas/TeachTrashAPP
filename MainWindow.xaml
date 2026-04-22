@@ -4,9 +4,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:TrashAPP.ViewModels"
+        xmlns:models="clr-namespace:TrashAPP.Core.Models"
         xmlns:local="clr-namespace:TrashAPP"
         mc:Ignorable="d"
-        Title="垃圾识别系统" Height="800" Width="1200"
+        Title="垃圾识别系统" Height="850" Width="1200"
         WindowStartupLocation="CenterScreen"
         Background="#FFF5F5F5">
 
@@ -15,14 +16,31 @@
     </Window.DataContext>
 
     <Window.Resources>
-        <local:BoolToFolderTextConverter x:Key="BoolToFolderTextConverter"/>
         <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
         <local:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
+        <local:BoolToCollapsedConverter x:Key="BoolToCollapsedConverter"/>
+        <local:BoolToVisibleConverter x:Key="BoolToVisibleConverter"/>
+        <local:InverseBoolToVisibleConverter x:Key="InverseBoolToVisibleConverter"/>
+        <local:EnumToBoolConverter x:Key="EnumToBoolConverter"/>
+
+        <!-- 输入模式单选按钮样式 -->
+        <Style x:Key="InputModeRadio" TargetType="RadioButton">
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <!-- 状态标签样式 -->
+        <Style x:Key="StatusLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
     </Window.Resources>
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="320"/>
+            <ColumnDefinition Width="340"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
@@ -32,66 +50,126 @@
                 <StackPanel Margin="16">
 
                     <!-- 标题 -->
-                    <TextBlock Text="垃圾识别系统" FontSize="20" FontWeight="Bold" Margin="0,0,0,16" Foreground="#FF333333"/>
+                    <TextBlock Text="垃圾识别系统" FontSize="22" FontWeight="Bold" Margin="0,0,0,4" Foreground="#FF333333"/>
+                    <TextBlock Text="基于 YOLO + ResNet18" FontSize="11" Foreground="#FF999999" Margin="0,0,0,16"/>
 
-                    <!-- 文件选择 -->
-                    <GroupBox Header="输入源" Margin="0,0,0,12" BorderBrush="#FFE0E0E0">
+                    <!-- 模型状态 -->
+                    <Border Background="#FFF0F7FF" BorderBrush="#FFBBDEFB" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="模型状态" FontWeight="Bold" FontSize="12" Foreground="#FF1976D2" Margin="0,0,0,8"/>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="检测模型:" FontSize="11" Foreground="#FF666666" Margin="0,0,8,0"/>
+                                <TextBlock Grid.Column="1" Text="{Binding DetectModelPath}" FontSize="11" Foreground="#FF333333" TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="分类模型:" FontSize="11" Foreground="#FF666666" Margin="0,0,8,0"/>
+                                <TextBlock Grid.Column="1" Text="{Binding ClassifyModelPath}" FontSize="11" Foreground="#FF333333" TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+                            <TextBlock Text="{Binding ModelStatusMessage}" FontSize="10" Margin="0,4,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#FF4CAF50"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ModelsReady}" Value="False">
+                                                <Setter Property="Foreground" Value="#FFF44336"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <Button Content="刷新" Command="{Binding RefreshModelsCommand}" FontSize="10" Padding="8,2" Margin="0,4,0,0" HorizontalAlignment="Left">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Setter Property="Background" Value="#FF90CAF9"/>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 输入方式 -->
+                    <GroupBox Header="输入方式" Margin="0,0,0,12" BorderBrush="#FFE0E0E0">
                         <StackPanel Margin="8">
-                            <Button Content="选择图片" Command="{Binding SelectImageCommand}" Margin="0,4"/>
-                            <Button Content="选择文件夹" Command="{Binding SelectFolderCommand}" Margin="0,4" Background="#FF4CAF50"/>
-                            <TextBlock Text="{Binding SourcePath}" FontSize="11" Foreground="#FF666666" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                            <TextBlock Text="{Binding IsFolder, Converter={StaticResource BoolToFolderTextConverter}}" FontSize="10" Foreground="#FF999999" Margin="0,2,0,0"/>
+                            <RadioButton Style="{StaticResource InputModeRadio}"
+                                         Content="单张图片"
+                                         IsChecked="{Binding InputMode, Converter={StaticResource EnumToBoolConverter}, ConverterParameter={x:Static models:InputMode.SingleImage}}"/>
+                            <RadioButton Style="{StaticResource InputModeRadio}"
+                                         Content="单个视频"
+                                         IsChecked="{Binding InputMode, Converter={StaticResource EnumToBoolConverter}, ConverterParameter={x:Static models:InputMode.SingleVideo}}"/>
+                            <RadioButton Style="{StaticResource InputModeRadio}"
+                                         Content="文件夹（图片）"
+                                         IsChecked="{Binding InputMode, Converter={StaticResource EnumToBoolConverter}, ConverterParameter={x:Static models:InputMode.FolderImages}}"/>
+                            <RadioButton Style="{StaticResource InputModeRadio}"
+                                         Content="文件夹（视频）"
+                                         IsChecked="{Binding InputMode, Converter={StaticResource EnumToBoolConverter}, ConverterParameter={x:Static models:InputMode.FolderVideos}}"/>
+                            <RadioButton Style="{StaticResource InputModeRadio}"
+                                         Content="摄像头流（TODO）"
+                                         Foreground="#FF999999"
+                                         IsEnabled="False"
+                                         IsChecked="{Binding InputMode, Converter={StaticResource EnumToBoolConverter}, ConverterParameter={x:Static models:InputMode.CameraStream}}"/>
+
+                            <Separator Margin="0,8" Background="#FFE0E0E0"/>
+
+                            <Button Content="选择输入源" Command="{Binding SelectSourceCommand}" Margin="0,4"/>
+                            <TextBlock Text="{Binding SourcePath}" FontSize="11" Foreground="#FF666666" TextWrapping="Wrap" Margin="4,4,4,0"/>
                         </StackPanel>
                     </GroupBox>
 
-                    <!-- 模型配置 -->
-                    <GroupBox Header="模型配置" Margin="0,0,0,12" BorderBrush="#FFE0E0E0">
+                    <!-- 输出配置 -->
+                    <GroupBox Header="输出配置" Margin="0,0,0,12" BorderBrush="#FFE0E0E0">
                         <StackPanel Margin="8">
-                            <TextBlock Text="检测模型 (YOLO)" FontSize="11" Foreground="#FF666666" Margin="4,4,4,0"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0" Text="{Binding DetectModelPath}" IsReadOnly="True" FontSize="11"/>
-                                <Button Grid.Column="1" Content="浏览" Command="{Binding SelectDetectModelCommand}" Padding="8,4" Margin="4,0,0,0"/>
-                            </Grid>
+                            <!-- 输出方式 -->
+                            <TextBlock Text="输出方式" FontSize="11" Foreground="#FF666666" Margin="4,4,4,2"/>
+                            <ComboBox SelectedValue="{Binding OutputMode}" Margin="4,2" Padding="8,4">
+                                <ComboBox.Items>
+                                    <models:OutputMode>SaveToFile</models:OutputMode>
+                                    <models:OutputMode>PreviewOnly</models:OutputMode>
+                                    <models:OutputMode>PeriodicSnapshot</models:OutputMode>
+                                    <models:OutputMode>RecordMkv</models:OutputMode>
+                                </ComboBox.Items>
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock>
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="{Binding}"/>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
 
-                            <TextBlock Text="分类模型 (ResNet18)" FontSize="11" Foreground="#FF666666" Margin="4,8,4,0"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0" Text="{Binding ClassifyModelPath}" IsReadOnly="True" FontSize="11"/>
-                                <Button Grid.Column="1" Content="浏览" Command="{Binding SelectClassifyModelCommand}" Padding="8,4" Margin="4,0,0,0"/>
-                            </Grid>
-                        </StackPanel>
-                    </GroupBox>
+                            <!-- 输出目录 -->
+                            <StackPanel Visibility="{Binding ShowOutputDir, Converter={StaticResource BoolToVisibleConverter}}">
+                                <TextBlock Text="输出目录" FontSize="11" Foreground="#FF666666" Margin="4,8,4,2"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Text="{Binding OutputDir}" IsReadOnly="True" FontSize="11"/>
+                                    <Button Grid.Column="1" Content="浏览" Command="{Binding SelectOutputDirCommand}" Padding="8,4" Margin="4,0,0,0"/>
+                                </Grid>
+                            </StackPanel>
 
-                    <!-- 参数设置 -->
-                    <GroupBox Header="参数设置" Margin="0,0,0,12" BorderBrush="#FFE0E0E0">
-                        <StackPanel Margin="8">
-                            <!-- 检测阈值 -->
-                            <TextBlock Margin="4,4,4,0">
-                                <Run Text="检测置信度: "/>
-                                <Run Text="{Binding DetectConfidence, StringFormat={}{0:F2}}" FontWeight="Bold"/>
-                            </TextBlock>
-                            <Slider Minimum="0.01" Maximum="1.0" Value="{Binding DetectConfidence}" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
-
-                            <!-- 大框比例 -->
-                            <TextBlock Margin="4,8,4,0">
-                                <Run Text="大框比例阈值: "/>
-                                <Run Text="{Binding MaxBoxAreaRatio, StringFormat={}{0:F2}}" FontWeight="Bold"/>
-                            </TextBlock>
-                            <Slider Minimum="0.05" Maximum="0.8" Value="{Binding MaxBoxAreaRatio}" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
-
-                            <!-- 分类阈值 -->
-                            <TextBlock Margin="4,8,4,0">
-                                <Run Text="大框分类阈值: "/>
-                                <Run Text="{Binding BigBoxMinClassConfidence, StringFormat={}{0:F2}}" FontWeight="Bold"/>
-                            </TextBlock>
-                            <Slider Minimum="0.1" Maximum="1.0" Value="{Binding BigBoxMinClassConfidence}" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                            <!-- 周期性截图间隔 -->
+                            <StackPanel Visibility="{Binding ShowPeriodicOptions, Converter={StaticResource BoolToVisibleConverter}}">
+                                <TextBlock Margin="4,8,4,2">
+                                    <Run Text="截图间隔: "/>
+                                    <Run Text="{Binding SnapshotIntervalSeconds}" FontWeight="Bold"/>
+                                    <Run Text=" 秒"/>
+                                </TextBlock>
+                                <Slider Minimum="1" Maximum="60" Value="{Binding SnapshotIntervalSeconds}" TickFrequency="1" IsSnapToTickEnabled="True" Margin="4,2"/>
+                            </StackPanel>
                         </StackPanel>
                     </GroupBox>
 
@@ -111,12 +189,12 @@
                             </ProgressBar.Style>
                         </ProgressBar>
                         <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="#FF666666" TextWrapping="Wrap" Margin="4,4,4,0"/>
-                        <TextBlock Text="{Binding ProcessedImages, StringFormat='已处理: {0}'}" FontSize="11" Foreground="#FF999999" Margin="4,2,4,0">
+                        <TextBlock Text="{Binding ProcessedImages, StringFormat='已处理: {0} / {1}', TargetNullValue=''}" FontSize="11" Foreground="#FF999999" Margin="4,2,4,0">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsFolder}" Value="True">
+                                        <DataTrigger Binding="{Binding IsFolderInput}" Value="True">
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -148,7 +226,7 @@
                 <!-- 原图 -->
                 <Border Grid.Column="0" Background="White" BorderBrush="#FFE0E0E0" BorderThickness="1" CornerRadius="4">
                     <Grid>
-                        <TextBlock Text="原图" FontWeight="Bold" Foreground="#FF999999" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        <TextBlock Text="原图" FontWeight="Bold" Foreground="#FFCCCCCC" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"
                                    Visibility="{Binding PreviewImage, Converter={StaticResource NullToVisibilityConverter}}"/>
                         <Image Source="{Binding PreviewImage}" Stretch="Uniform" Margin="8"/>
                     </Grid>
@@ -157,7 +235,7 @@
                 <!-- 结果图 -->
                 <Border Grid.Column="2" Background="White" BorderBrush="#FFE0E0E0" BorderThickness="1" CornerRadius="4">
                     <Grid>
-                        <TextBlock Text="识别结果" FontWeight="Bold" Foreground="#FF999999" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        <TextBlock Text="识别结果" FontWeight="Bold" Foreground="#FFCCCCCC" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"
                                    Visibility="{Binding ResultImage, Converter={StaticResource NullToVisibilityConverter}}"/>
                         <Image Source="{Binding ResultImage}" Stretch="Uniform" Margin="8"/>
                     </Grid>

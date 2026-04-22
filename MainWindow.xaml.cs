@@ -17,21 +17,7 @@ public partial class MainWindow : Window
     }
 }
 
-/// <summary>
-/// 布尔值转文件夹/文件文本
-/// </summary>
-public class BoolToFolderTextConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        return value is true ? "📁 文件夹模式" : "📄 单文件模式";
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
-}
+#region 转换器
 
 /// <summary>
 /// Null 值转可见性（Null 时显示）
@@ -65,3 +51,76 @@ public class CountToVisibilityConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// true -> Collapsed, false -> Visible
+/// </summary>
+public class BoolToCollapsedConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return value is true ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// true -> Visible, false -> Collapsed
+/// </summary>
+public class BoolToVisibleConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return value is true ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// true -> Collapsed, false -> Visible (反向)
+/// </summary>
+public class InverseBoolToVisibleConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return value is true ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// 枚举转布尔（用于 RadioButton 绑定）
+/// ConverterParameter 传入枚举值
+/// </summary>
+public class EnumToBoolConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value == null || parameter == null)
+            return false;
+
+        return value.Equals(parameter);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is true && parameter != null)
+            return parameter;
+
+        return Binding.DoNothing;
+    }
+}
+
+#endregion
