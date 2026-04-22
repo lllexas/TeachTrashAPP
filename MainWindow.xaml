@@ -1,0 +1,201 @@
+<Window x:Class="TrashAPP.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:TrashAPP.ViewModels"
+        xmlns:local="clr-namespace:TrashAPP"
+        mc:Ignorable="d"
+        Title="垃圾识别系统" Height="800" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        Background="#FFF5F5F5">
+
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+
+    <Window.Resources>
+        <local:BoolToFolderTextConverter x:Key="BoolToFolderTextConverter"/>
+        <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <local:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ========== 左侧控制面板 ========== -->
+        <Border Grid.Column="0" Background="White" BorderBrush="#FFE0E0E0" BorderThickness="0,0,1,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="16">
+
+                    <!-- 标题 -->
+                    <TextBlock Text="垃圾识别系统" FontSize="20" FontWeight="Bold" Margin="0,0,0,16" Foreground="#FF333333"/>
+
+                    <!-- 文件选择 -->
+                    <GroupBox Header="输入源" Margin="0,0,0,12" BorderBrush="#FFE0E0E0">
+                        <StackPanel Margin="8">
+                            <Button Content="选择图片" Command="{Binding SelectImageCommand}" Margin="0,4"/>
+                            <Button Content="选择文件夹" Command="{Binding SelectFolderCommand}" Margin="0,4" Background="#FF4CAF50"/>
+                            <TextBlock Text="{Binding SourcePath}" FontSize="11" Foreground="#FF666666" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding IsFolder, Converter={StaticResource BoolToFolderTextConverter}}" FontSize="10" Foreground="#FF999999" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- 模型配置 -->
+                    <GroupBox Header="模型配置" Margin="0,0,0,12" BorderBrush="#FFE0E0E0">
+                        <StackPanel Margin="8">
+                            <TextBlock Text="检测模型 (YOLO)" FontSize="11" Foreground="#FF666666" Margin="4,4,4,0"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding DetectModelPath}" IsReadOnly="True" FontSize="11"/>
+                                <Button Grid.Column="1" Content="浏览" Command="{Binding SelectDetectModelCommand}" Padding="8,4" Margin="4,0,0,0"/>
+                            </Grid>
+
+                            <TextBlock Text="分类模型 (ResNet18)" FontSize="11" Foreground="#FF666666" Margin="4,8,4,0"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding ClassifyModelPath}" IsReadOnly="True" FontSize="11"/>
+                                <Button Grid.Column="1" Content="浏览" Command="{Binding SelectClassifyModelCommand}" Padding="8,4" Margin="4,0,0,0"/>
+                            </Grid>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- 参数设置 -->
+                    <GroupBox Header="参数设置" Margin="0,0,0,12" BorderBrush="#FFE0E0E0">
+                        <StackPanel Margin="8">
+                            <!-- 检测阈值 -->
+                            <TextBlock Margin="4,4,4,0">
+                                <Run Text="检测置信度: "/>
+                                <Run Text="{Binding DetectConfidence, StringFormat={}{0:F2}}" FontWeight="Bold"/>
+                            </TextBlock>
+                            <Slider Minimum="0.01" Maximum="1.0" Value="{Binding DetectConfidence}" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+
+                            <!-- 大框比例 -->
+                            <TextBlock Margin="4,8,4,0">
+                                <Run Text="大框比例阈值: "/>
+                                <Run Text="{Binding MaxBoxAreaRatio, StringFormat={}{0:F2}}" FontWeight="Bold"/>
+                            </TextBlock>
+                            <Slider Minimum="0.05" Maximum="0.8" Value="{Binding MaxBoxAreaRatio}" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+
+                            <!-- 分类阈值 -->
+                            <TextBlock Margin="4,8,4,0">
+                                <Run Text="大框分类阈值: "/>
+                                <Run Text="{Binding BigBoxMinClassConfidence, StringFormat={}{0:F2}}" FontWeight="Bold"/>
+                            </TextBlock>
+                            <Slider Minimum="0.1" Maximum="1.0" Value="{Binding BigBoxMinClassConfidence}" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- 操作按钮 -->
+                    <StackPanel Margin="0,0,0,12">
+                        <Button Content="开始识别" Command="{Binding StartInferenceCommand}" IsEnabled="{Binding CanStartInference}" Background="#FF4CAF50" FontWeight="Bold" Padding="16,10"/>
+                        <Button Content="取消" Command="{Binding CancelInferenceCommand}" IsEnabled="{Binding IsRunning}" Background="#FFF44336"/>
+                    </StackPanel>
+
+                    <!-- 进度 -->
+                    <StackPanel Margin="0,0,0,12">
+                        <ProgressBar Value="{Binding ProgressValue}" Maximum="100" Height="6" Margin="4" Background="#FFE0E0E0" BorderThickness="0">
+                            <ProgressBar.Style>
+                                <Style TargetType="ProgressBar">
+                                    <Setter Property="Foreground" Value="#FF4CAF50"/>
+                                </Style>
+                            </ProgressBar.Style>
+                        </ProgressBar>
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="#FF666666" TextWrapping="Wrap" Margin="4,4,4,0"/>
+                        <TextBlock Text="{Binding ProcessedImages, StringFormat='已处理: {0}'}" FontSize="11" Foreground="#FF999999" Margin="4,2,4,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFolder}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ========== 右侧结果区域 ========== -->
+        <Grid Grid.Column="1" Margin="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="200"/>
+            </Grid.RowDefinitions>
+
+            <!-- 图片预览区 -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 原图 -->
+                <Border Grid.Column="0" Background="White" BorderBrush="#FFE0E0E0" BorderThickness="1" CornerRadius="4">
+                    <Grid>
+                        <TextBlock Text="原图" FontWeight="Bold" Foreground="#FF999999" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Visibility="{Binding PreviewImage, Converter={StaticResource NullToVisibilityConverter}}"/>
+                        <Image Source="{Binding PreviewImage}" Stretch="Uniform" Margin="8"/>
+                    </Grid>
+                </Border>
+
+                <!-- 结果图 -->
+                <Border Grid.Column="2" Background="White" BorderBrush="#FFE0E0E0" BorderThickness="1" CornerRadius="4">
+                    <Grid>
+                        <TextBlock Text="识别结果" FontWeight="Bold" Foreground="#FF999999" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Visibility="{Binding ResultImage, Converter={StaticResource NullToVisibilityConverter}}"/>
+                        <Image Source="{Binding ResultImage}" Stretch="Uniform" Margin="8"/>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- 分隔线 -->
+            <Separator Grid.Row="1" Margin="0,8" Background="#FFE0E0E0"/>
+
+            <!-- 结果列表 -->
+            <Border Grid.Row="2" Background="White" BorderBrush="#FFE0E0E0" BorderThickness="1" CornerRadius="4">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="检测结果" FontWeight="Bold" Margin="12,8,12,4" Foreground="#FF333333"/>
+
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding CurrentDetections}" AutoGenerateColumns="False"
+                              IsReadOnly="True" GridLinesVisibility="Horizontal" BorderThickness="0"
+                              HeadersVisibility="Column" Margin="4">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="类别" Binding="{Binding ClassName}" Width="100"/>
+                            <DataGridTextColumn Header="检测置信度" Binding="{Binding DetectionConfidence, StringFormat={}{0:F3}}" Width="100"/>
+                            <DataGridTextColumn Header="分类置信度" Binding="{Binding ClassConfidence, StringFormat={}{0:F3}}" Width="100"/>
+                            <DataGridTextColumn Header="位置" Binding="{Binding BoxPosition}" Width="150"/>
+                            <DataGridTextColumn Header="面积比例" Binding="{Binding BoxAreaRatio, StringFormat={}{0:F3}}" Width="80"/>
+                            <DataGridCheckBoxColumn Header="大框" Binding="{Binding IsBigBox}" Width="60"/>
+                            <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="80"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <TextBlock Grid.Row="1" Text="暂无检测结果" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="#FFCCCCCC" FontSize="14"
+                               Visibility="{Binding CurrentDetections.Count, Converter={StaticResource CountToVisibilityConverter}}"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
