@@ -61,6 +61,48 @@ public class PythonProcessInferenceService : IInferenceService
         }
     }
 
+    public async Task<ImageInferenceResult> InferFromBytesAsync(
+        byte[] imageBytes,
+        string filename,
+        InferenceParameters parameters,
+        CancellationToken cancellationToken = default)
+    {
+        var extension = Path.GetExtension(filename);
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            extension = ".jpg";
+        }
+
+        var tempFilePath = Path.Combine(
+            Path.GetTempPath(),
+            $"{Path.GetFileNameWithoutExtension(filename)}_{Guid.NewGuid():N}{extension}");
+
+        try
+        {
+            await File.WriteAllBytesAsync(tempFilePath, imageBytes, cancellationToken);
+            var result = await InferSingleAsync(tempFilePath, parameters, cancellationToken);
+            if (string.IsNullOrWhiteSpace(result.ImagePath))
+            {
+                result.ImagePath = $"[frame] {filename}";
+            }
+
+            return result;
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tempFilePath))
+                {
+                    File.Delete(tempFilePath);
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
+
     private async Task<ImageInferenceResult> RunPythonAsync(
         string arguments,
         CancellationToken cancellationToken)

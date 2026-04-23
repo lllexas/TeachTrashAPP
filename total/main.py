@@ -151,67 +151,31 @@ async def predict_image(file: UploadFile = File(...)):
 
 
 # =========================================================
-# 6. 视频接口
+# 6. 视频接口 [已废弃]
 # =========================================================
-@app.post("/predict/video")
+# NOTE: 视频处理已改为前端逐帧截取 + 调用 /predict/image。
+# 此接口保留但标记废弃，不再推荐使用。
+@app.post("/predict/video", deprecated=True)
 async def predict_video(file: UploadFile = File(...)):
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No file uploaded")
-
-    ensure_video_file(file.filename)
-
-    temp_path = None
-    try:
-        temp_path = save_upload_file(file, TEMP_DIR)
-        result = run_video(
-            input_path=str(temp_path),
-            output_dir=str(VIDEO_OUTPUT_DIR)
-        )
-
-        return {
-            "success": result.get("success", True),
-            "filename": file.filename,
-            "output_path": result.get("output_path", ""),
-            "total_frames": result.get("total_frames", 0),
-            "global_counter": result.get("global_counter", {}),
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Video inference failed: {e}")
-    finally:
-        if temp_path:
-            cleanup_temp(temp_path)
+    raise HTTPException(
+        status_code=410,
+        detail="视频接口已废弃。请使用前端逐帧调用 /predict/image。"
+    )
 
 
 # =========================================================
-# 7. 摄像头接口
+# 7. 摄像头接口 [已废弃]
 # =========================================================
-@app.post("/predict/camera")
+# NOTE: 摄像头处理已改为前端逐帧截取 + 调用 /predict/image。
+# 此接口保留但标记废弃，不再推荐使用。
+@app.post("/predict/camera", deprecated=True)
 async def predict_camera(
     camera_id: int = Form(0),
     enable_record: bool = Form(True),
     show_window: bool = Form(False),
     max_frames: int = Form(200)
 ):
-    try:
-        output_video_path = None
-        if enable_record:
-            output_video_path = str(CAMERA_OUTPUT_DIR / "camera_output.mp4")
-
-        result = run_camera(
-            output_video_path=output_video_path,
-            camera_id=camera_id,
-            enable_record=enable_record,
-            show_window=show_window,
-            max_frames=max_frames
-        )
-
-        return {
-            "success": result.get("success", True),
-            "camera_id": camera_id,
-            "frames_processed": result.get("frames_processed", 0),
-            "output_video_path": result.get("output_video_path"),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Camera inference failed: {e}")
+    raise HTTPException(
+        status_code=410,
+        detail="摄像头接口已废弃。请使用前端逐帧调用 /predict/image。"
+    )

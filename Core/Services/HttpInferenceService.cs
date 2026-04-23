@@ -181,6 +181,123 @@ public class HttpInferenceService : IInferenceService
         }
     }
 
+    public async Task<ImageInferenceResult> InferFromBytesAsync(
+        byte[] imageBytes,
+        string filename,
+        InferenceParameters parameters,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var fileContent = new ByteArrayContent(imageBytes);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+            content.Add(fileContent, "file", filename);
+
+            var response = await _httpClient.PostAsync(
+                $"{_baseUrl}/predict/image",
+                content,
+                cancellationToken);
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new ImageInferenceResult
+                {
+                    ImagePath = $"[frame] {filename}",
+                    HasError = true,
+                    ErrorMessage = $"HTTP {response.StatusCode}: {json}"
+                };
+            }
+
+            var backendResult = JsonSerializer.Deserialize<BackendImageResult>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                NumberHandling = JsonNumberHandling.AllowReadingFromString
+            });
+
+            if (backendResult == null)
+            {
+                return new ImageInferenceResult
+                {
+                    ImagePath = $"[frame] {filename}",
+                    HasError = true,
+                    ErrorMessage = "无法解析后端返回的 JSON"
+                };
+            }
+
+            if (!backendResult.Success)
+            {
+                return new ImageInferenceResult
+                {
+                    ImagePath = $"[frame] {filename}",
+                    HasError = true,
+                    ErrorMessage = backendResult.Detail ?? "后端处理失败"
+                };
+            }
+
+            var detections = new List<DetectionItem>();
+            if (backendResult.Detections != null)
+            {
+                foreach (var d in backendResult.Detections)
+                {
+                    detections.Add(new DetectionItem
+                    {
+                        X1 = d.Bbox[0],
+                        Y1 = d.Bbox[1],
+                        X2 = d.Bbox[2],
+                        Y2 = d.Bbox[3],
+                        BoxWidth = d.Bbox[2] - d.Bbox[0],
+                        BoxHeight = d.Bbox[3] - d.Bbox[1],
+                        DetectionConfidence = d.DetConf,
+                        ClassName = d.Label,
+                        ClassConfidence = d.Confidence,
+                        IsBigBox = d.IsBigBox,
+                        IsFiltered = false,
+                    });
+                }
+            }
+
+            return new ImageInferenceResult
+            {
+                ImagePath = $"[frame] {filename}",
+                OutputImagePath = backendResult.SavePath,
+                HasError = false,
+                Detections = detections,
+                KeptCount = backendResult.DetectionCount,
+                SkippedBigCount = 0,
+            };
+        }
+        catch (TaskCanceledException)
+        {
+            return new ImageInferenceResult
+            {
+                ImagePath = $"[frame] {filename}",
+                HasError = true,
+                ErrorMessage = "请求超时，后端处理时间过长"
+            };
+        }
+        catch (HttpRequestException ex)
+        {
+            return new ImageInferenceResult
+            {
+                ImagePath = $"[frame] {filename}",
+                HasError = true,
+                ErrorMessage = $"无法连接后端服务: {ex.Message}\n请确认后端已启动 ({_baseUrl})"
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ImageInferenceResult
+            {
+                ImagePath = $"[frame] {filename}",
+                HasError = true,
+                ErrorMessage = $"请求异常: {ex.Message}"
+            };
+        }
+    }
+
     public async IAsyncEnumerable<ImageInferenceResult> InferBatchAsync(
         string folderPath,
         InferenceParameters parameters,

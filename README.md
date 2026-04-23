@@ -18,7 +18,7 @@ TrashAPP/
 │   ├── main.py               # FastAPI 入口
 │   ├── requirements.txt      # Python 依赖
 │   ├── handlers/             # 推理处理模块
-│   └── models/               # 模型文件夹（需自行放入）
+│   └── models/               # 模型文件夹（已包含在仓库中）
 │       ├── YOLO/
 │       └── ResNet/
 └── Plan/                     # 项目文档
@@ -28,14 +28,12 @@ TrashAPP/
 
 ## 一、模型文件准备
 
-**需要手动放入以下模型文件：**
+**模型文件已包含在仓库中，无需手动放置：**
 
-| 路径 | 文件 | 说明 |
-|------|------|------|
-| `total/models/YOLO/` | `best.pt` | YOLOv8 检测模型 |
-| `total/models/ResNet/` | `best_cls_resnet18.pth` | ResNet18 分类模型 |
-
-> 模型文件**不要提交到 Git**，已配置 `.gitignore` 忽略。
+| 路径 | 文件 | 大小 | 说明 |
+|------|------|------|------|
+| `total/models/YOLO/` | `best.pt` | ~49MB | YOLOv8 检测模型 |
+| `total/models/ResNet/` | `best_cls_resnet18.pth` | ~43MB | ResNet18 分类模型 |
 
 ---
 
@@ -97,7 +95,7 @@ venv\Scripts\python -m uvicorn main:app --host 0.0.0.0 --port 14785 --no-access-
 > 依赖未安装，请执行 `venv\Scripts\pip install -r requirements.txt`。
 
 **Q: 模型文件放哪里？**
-> `total/models/YOLO/best.pt` 和 `total/models/ResNet/best_cls_resnet18.pth`
+> 已包含在仓库中：`total/models/YOLO/best.pt` 和 `total/models/ResNet/best_cls_resnet18.pth`
 
 ---
 

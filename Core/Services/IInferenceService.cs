@@ -25,4 +25,13 @@ public interface IInferenceService
         string folderPath,
         InferenceParameters parameters,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 从内存字节数组进行推理（用于视频/摄像头帧）
+    /// </summary>
+    Task<ImageInferenceResult> InferFromBytesAsync(
+        byte[] imageBytes,
+        string filename,
+        InferenceParameters parameters,
+        CancellationToken cancellationToken = default);
 }

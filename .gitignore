@@ -21,3 +21,7 @@ output/
 # Python virtual environment
 venv/
 env/
+
+# Windows download marker files
+*Zone.Identifier
+*.Identifier
