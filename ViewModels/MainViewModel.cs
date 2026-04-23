@@ -23,7 +23,7 @@ public partial class MainViewModel : ObservableObject
     // ========== 后端连接 ==========
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanStartInference))]
-    private string _backendUrl = "http://127.0.0.1:8000";
+    private string _backendUrl = "http://127.0.0.1:14785";
 
     [ObservableProperty]
     private bool _backendConnected;

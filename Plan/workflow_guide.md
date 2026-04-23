@@ -51,7 +51,7 @@
 ### Step 2: 提供访问地址
 后端开发把后端服务的访问地址发给前端，格式如：
 ```
-http://192.168.x.x:8000
+http://192.168.x.x:14785
 ```
 > **重要**：如果后端开发在 WSL (Windows Subsystem for Linux) 中运行后端，IP 地址可能不是 `127.0.0.1`，需要确认实际网络地址。
 
@@ -127,7 +127,7 @@ http://192.168.x.x:8000
 后端开发完成后端后，在提交给前端前，请确认以下事项：
 
 - [ ] 运行 `python main.py`（或 `uvicorn main:app --reload`）能正常启动
-- [ ] 浏览器访问 `http://127.0.0.1:8000/docs` 能看到自动生成的 API 文档页面
+- [ ] 浏览器访问 `http://127.0.0.1:14785/docs` 能看到自动生成的 API 文档页面
 - [ ] 在 `/docs` 页面中用 "Try it out" 功能上传一张测试图片，能返回 JSON 结果
 - [ ] JSON 结果中包含 `boxes`, `labels`, `confidences` 等关键字段
 - [ ] 连续上传 10 张图片，每次响应时间在 2 秒以内（GPU）或 10 秒以内（CPU）
@@ -158,7 +158,7 @@ var fileContent = new StreamContent(File.OpenRead("test.jpg"));
 content.Add(fileContent, "file", "test.jpg");
 
 // POST 请求
-var response = await client.PostAsync("http://127.0.0.1:8000/predict", content);
+var response = await client.PostAsync("http://127.0.0.1:14785/predict", content);
 var json = await response.Content.ReadAsStringAsync();
 
 // 解析 JSON

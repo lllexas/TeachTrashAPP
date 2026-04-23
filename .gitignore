@@ -17,3 +17,7 @@ __pycache__/
 
 # Output files
 output/
+
+# Python virtual environment
+venv/
+env/

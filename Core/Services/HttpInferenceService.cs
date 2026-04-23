@@ -22,7 +22,7 @@ public class HttpInferenceService : IInferenceService
 
     public HttpInferenceService(string? baseUrl = null)
     {
-        _baseUrl = baseUrl?.TrimEnd('/') ?? "http://127.0.0.1:8000";
+        _baseUrl = baseUrl?.TrimEnd('/') ?? "http://127.0.0.1:14785";
         _httpClient = new HttpClient
         {
             Timeout = TimeSpan.FromSeconds(60)
@@ -31,7 +31,7 @@ public class HttpInferenceService : IInferenceService
 
     public void UpdateBaseUrl(string? baseUrl)
     {
-        _baseUrl = baseUrl?.TrimEnd('/') ?? "http://127.0.0.1:8000";
+        _baseUrl = baseUrl?.TrimEnd('/') ?? "http://127.0.0.1:14785";
     }
 
     /// <summary>

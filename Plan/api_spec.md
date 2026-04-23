@@ -11,8 +11,8 @@
 
 | 项目 | 值 |
 |-----|-----|
-| 基础 URL | `http://{host}:8000` |
-| 文档地址 | `http://{host}:8000/docs` (Swagger UI) |
+| 基础 URL | `http://{host}:14785` |
+| 文档地址 | `http://{host}:14785/docs` (Swagger UI) |
 | 数据格式 | JSON |
 | 编码 | UTF-8 |
 

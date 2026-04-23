@@ -116,9 +116,12 @@ public class BackendLauncher
             return false;
         }
 
-        var python = FindPython();
         var workingDir = Path.GetDirectoryName(entryPath)!;
-        var port = 8000;
+        var port = 14785;
+
+        // 优先使用项目内的 venv
+        var venvPython = Path.Combine(workingDir, "venv", "Scripts", "python.exe");
+        var python = File.Exists(venvPython) ? venvPython : FindPython();
 
         onProgress?.Invoke($"正在启动后端...");
         onProgress?.Invoke($"Python: {python}");
